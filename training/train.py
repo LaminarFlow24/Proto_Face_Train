@@ -1,3 +1,15 @@
+import subprocess
+import sys
+
+# Check if joblib is installed, if not, install it
+try:
+    import joblib
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "joblib"])
+    import joblib
+
+
+
 import os
 import argparse
 import joblib
