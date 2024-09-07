@@ -1,20 +1,65 @@
 import streamlit as st
+import zipfile
+import os
+from pathlib import Path
 from training.train import run_training
 
-st.title("Face Recognition Training")
+# Set the Streamlit app title
+st.title("Upload and Extract ZIP File")
 
-# Input fields for dataset and embeddings paths
-dataset_path = st.text_input("Enter the dataset path (leave blank if using embeddings):", "")
-embeddings_path = st.text_input("Enter the embeddings path:", "")
-labels_path = st.text_input("Enter the labels path:", "")
-class_to_idx_path = st.text_input("Enter the class_to_idx path:", "")
-use_grid_search = st.checkbox("Use grid search for hyperparameter tuning")
+# Upload ZIP file
+uploaded_file = st.file_uploader("Please upload a ZIP file", type="zip")
 
-# Button to run the training
-if st.button("Run Training"):
-    if dataset_path or embeddings_path:
-        st.write("Running training...")
-        run_training(dataset_path, embeddings_path, labels_path, class_to_idx_path, use_grid_search)
-        st.write("Training complete!")
+if uploaded_file is not None:
+    # Specify a folder to store the extracted files
+    extract_path = Path("extracted_data")
+
+    # Create the extraction folder if it doesn't exist
+    extract_path.mkdir(exist_ok=True)
+
+    # Save the uploaded ZIP file locally
+    zip_path = extract_path / "uploaded.zip"
+    with open(zip_path, "wb") as f:
+        f.write(uploaded_file.getbuffer())
+    st.success("ZIP file uploaded successfully!")
+
+    # Extract the ZIP file
+    with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        zip_ref.extractall(extract_path)
+    st.success("ZIP file extracted!")
+
+    # Find the folder inside the extracted path
+    extracted_folder = None
+    for item in extract_path.iterdir():
+        if item.is_dir():
+            extracted_folder = item
+            break
+
+    if extracted_folder:
+        extracted_folder_path = str(extracted_folder)
+        st.write(f"Extracted folder path: {extracted_folder_path}")
+
+        # Run the Python script using the extracted folder path
+        if st.button("Run Training Script"):
+            try:
+                # Run the training script using the extracted folder path
+                model_path = run_training(dataset_path=extracted_folder_path,
+                                          embeddings_path=None,
+                                          labels_path=None,
+                                          class_to_idx_path=None,
+                                          use_grid_search=False)
+                
+                st.success("Model trained successfully!")
+                
+                # Provide a download button for the trained model
+                with open(model_path, "rb") as f:
+                    st.download_button(
+                        label="Download Trained Model",
+                        data=f,
+                        file_name="face_recogniser.pkl",
+                        mime="application/octet-stream"
+                    )
+            except Exception as e:
+                st.error(f"An error occurred while running the script: {e}")
     else:
-        st.write("Please provide a dataset path or embeddings path.")
+        st.error("No folder found inside the extracted ZIP file!")
