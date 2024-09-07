@@ -12,3 +12,4 @@ torchvision
 Werkzeug
 opencv-python
 matplotlib
+pickle
