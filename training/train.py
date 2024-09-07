@@ -1,18 +1,6 @@
-import subprocess
-import sys
-
-# Check if joblib is installed, if not, install it
-try:
-    import joblib
-except:
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "joblib"])
-    import joblib
-
-
-
 import os
 import argparse
-import joblib
+import pickle  # Replacing joblib with pickle
 import numpy as np
 from PIL import Image
 from torchvision import transforms, datasets
@@ -75,12 +63,11 @@ def dataset_to_embeddings(dataset, features_extractor):
     return embeddings, labels
 
 
-
 def load_data(args, features_extractor):
     if args.embeddings_path:
         return np.loadtxt(args.embeddings_path), \
                np.loadtxt(args.labels_path, dtype='str').tolist(), \
-               joblib.load(args.class_to_idx_path)
+               pickle.load(open(args.class_to_idx_path, 'rb'))  # Using pickle to load the class_to_idx
 
     dataset = datasets.ImageFolder(args.dataset_path)
     embeddings, labels = dataset_to_embeddings(dataset, features_extractor)
@@ -122,11 +109,14 @@ def main():
     # Print classification report using the filtered target names
     print(metrics.classification_report(labels, clf.predict(embeddings), target_names=list(target_names)))
 
+    # Save the model and class_to_idx using pickle
     if not os.path.isdir(MODEL_DIR_PATH):
         os.mkdir(MODEL_DIR_PATH)
     model_path = os.path.join('model', 'face_recogniser.pkl')
-    joblib.dump(FaceRecogniser(features_extractor, clf, idx_to_class), model_path)
-
+    
+    # Save the FaceRecogniser object with pickle
+    with open(model_path, 'wb') as model_file:
+        pickle.dump(FaceRecogniser(features_extractor, clf, idx_to_class), model_file)
 
 
 if __name__ == '__main__':
