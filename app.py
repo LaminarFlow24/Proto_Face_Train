@@ -3,6 +3,8 @@ import zipfile
 import os
 from pathlib import Path
 from training.train import run_training
+import sys
+from io import StringIO
 
 # Set the Streamlit app title
 st.title("Upload and Extract ZIP File")
@@ -16,7 +18,7 @@ if uploaded_file is not None:
 
     # Create the extraction folder if it doesn't exist
     extract_path.mkdir(exist_ok=True)
-
+    
     # Save the uploaded ZIP file locally
     zip_path = extract_path / "uploaded.zip"
     with open(zip_path, "wb") as f:
@@ -42,6 +44,10 @@ if uploaded_file is not None:
         # Run the Python script using the extracted folder path
         if st.button("Run Training Script"):
             try:
+                # Capture the output during training
+                output_buffer = StringIO()
+                sys.stdout = output_buffer
+
                 # Run the training script using the extracted folder path
                 model_path = run_training(dataset_path=extracted_folder_path,
                                           embeddings_path=None,
@@ -49,6 +55,12 @@ if uploaded_file is not None:
                                           class_to_idx_path=None,
                                           use_grid_search=False)
                 
+                # Reset stdout
+                sys.stdout = sys.__stdout__
+
+                # Display the captured output in Streamlit
+                st.text_area("Training Output", output_buffer.getvalue(), height=300)
+
                 st.success("Model trained successfully!")
                 
                 # Provide a download button for the trained model
@@ -61,5 +73,8 @@ if uploaded_file is not None:
                     )
             except Exception as e:
                 st.error(f"An error occurred while running the script: {e}")
+            finally:
+                # Ensure stdout is reset
+                sys.stdout = sys.__stdout__
     else:
         st.error("No folder found inside the extracted ZIP file!")
